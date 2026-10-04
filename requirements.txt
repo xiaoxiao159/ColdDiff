@@ -1,0 +1,21 @@
+# ============================================================
+# Fast-DDPM Python 依赖(不含 torch / torchvision)
+# ------------------------------------------------------------
+# torch 单独安装,需匹配 CUDA 版本(目标: torch 2.1.2 + cu118):
+#   pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
+#   (纯 CPU 验证: pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cpu)
+# ============================================================
+
+numpy==1.26.4
+scipy==1.15.3
+scikit-image==0.25.2
+opencv-python-headless==4.10.0.84   # headless 版无需 GUI 库,适合容器;等价于 opencv-python
+pandas==2.3.3
+pyyaml==6.0.3
+tqdm==4.70.0
+lmdb==2.3.0
+pillow==12.2.0
+matplotlib==3.10.9
+tensorboard==2.21.0
+tensorboardX==2.6.5
+medpy==0.5.2
