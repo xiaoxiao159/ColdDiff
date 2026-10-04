@@ -167,28 +167,38 @@ def cold_diffusion_improved_sampling(
     alpha_bar,
     model,
     T,
+    r_sigma=0.1,
 ):
     """
-    Cold Diffusion improved sampling with two-stage inference.
+    Cold Diffusion improved sampling with two-stage inference and
+    residual guidance (r_t).
 
     Algorithm (for T=10):
         x_t = x_img  (start from LDCT itself, NOT Gaussian noise)
         for t = T, T-1, ..., 1:
-            # Stage 1: coarse denoising
-            x_hat_0 = model([x_img, x_t], t)
+            # Stage 1: coarse denoising (r channel zero-filled)
+            x_hat_0 = model([x_img, x_t, 0], t)
 
             # Improved sampling
             delta_alpha = alpha_bar[t-1] - alpha_bar[t]
             x_{t-1} = x_t + delta_alpha * (x_hat_0 - x_img)
 
-            # Stage 2: refinement
-            x_hat_hat_0 = model([x_img, x_{t-1}], t-1)
+            # Residual guidance map: deviation of the current state from the
+            # trajectory stage 1 claims. Algebraically equal to
+            #   x_{t-1} - D(x_hat_0, t-1)  =  x_t - D(x_hat_0, t)
+            # i.e. a normalized per-pixel error map of stage 1's prediction
+            # (carrying accumulated history error at inference time).
+            r_t = tanh((x_t - D(x_hat_0, t)) / sigma)
+
+            # Stage 2: refinement, sees the residual map explicitly
+            x_hat_hat_0 = model([x_img, x_{t-1}, r_t], t-1)
 
     Args:
         x_img:     [B, 1, H, W] LDCT condition image (also serves as x_T)
         alpha_bar: [T+1] CMPD cumulative alpha schedule
         model:     UNet denoising network
         T:         int, total sampling steps (typically 10)
+        r_sigma:   float, tanh normalization scale for r_t (default 0.1)
 
     Returns:
         denoised:       [B, 1, H, W] final denoised output
@@ -212,7 +222,9 @@ def cold_diffusion_improved_sampling(
             t_prev = torch.full((B,), t_val - 1, device=device).float()
 
             # ---- Stage 1: Predict clean image ----
-            model_input_1 = torch.cat([x_img, x_t], dim=1)  # [B, 2, H, W]
+            # Third channel zero-filled (no residual map available yet)
+            zero_ch = torch.zeros_like(x_img)
+            model_input_1 = torch.cat([x_img, x_t, zero_ch], dim=1)  # [B, 3, H, W]
             x0_pred = model(model_input_1, t)
             x0_preds.append(x0_pred)
 
@@ -224,8 +236,15 @@ def cold_diffusion_improved_sampling(
             # Intuition: subtract a fraction of the predicted noise residual
             x_tm1 = x_t + delta_alpha * (x0_pred - x_img)
 
+            # ---- Residual guidance map r_t ----
+            # x_{t-1} - D(x_hat_0, t-1) == x_t - D(x_hat_0, t); bounded to [-1, 1]
+            r_t = torch.tanh(
+                (x_t - alpha_bar[t_val].to(device) * x0_pred
+                     - (1.0 - alpha_bar[t_val].to(device)) * x_img) / r_sigma
+            )
+
             # ---- Stage 2: Refined prediction ----
-            model_input_2 = torch.cat([x_img, x_tm1], dim=1)
+            model_input_2 = torch.cat([x_img, x_tm1, r_t], dim=1)  # [B, 3, H, W]
             x0_pred_2 = model(model_input_2, t_prev)
             x0_preds_stage2.append(x0_pred_2)
 

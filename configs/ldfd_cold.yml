@@ -14,7 +14,7 @@ data:
 
 model:
     type: "cold_diffusion"
-    in_channels: 2
+    in_channels: 3
     out_ch: 1
     ch: 32
     ch_mult: [1, 1, 2, 2, 4, 4]
@@ -40,13 +40,15 @@ cold_diffusion:
     # 'cmpd' is an alias of 'cosine' (Nichol-Dhariwal). Must match between
     # training and sampling: the schedule is rebuilt from config in __init__,
     # it is NOT stored in the checkpoint.
-    alpha_schedule: cmpd
+    alpha_schedule: linear
     cmpd_s: 0.008            # cosine offset, used only by cosine/cmpd
     sigmoid_k: 10.0          # sigmoid steepness, used only by sigmoid
     num_timesteps: 10
-    stage1_weight: 0.6
-    stage2_weight: 0.4
+    stage1_weight: 0.4
+    stage2_weight: 0.6
     predict_target: "x0"
+    # tanh normalization scale for the stage-2 residual guidance map r_t
+    r_sigma: 0.1
 
 training:
     batch_size: 4

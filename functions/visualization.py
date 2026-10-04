@@ -214,7 +214,8 @@ def visualize_cold_diffusion(model, x_img, x_gt, alpha_bar, T, vis_base_dir, cas
     with torch.no_grad():
         # Use the final denoised output as input to see the UNet's
         # internal representations of the clean reconstruction
-        model_input = torch.cat([x_img, denoised], dim=1)  # [B, 2, H, W]
+        model_input = torch.cat(
+            [x_img, denoised, torch.zeros_like(x_img)], dim=1)  # [B, 3, H, W]
         t_zero = torch.zeros((x_img.shape[0],), device=x_img.device).float()
         _, features = inner_model(model_input, t_zero, return_features=True)
 

@@ -132,6 +132,8 @@ class Diffusion(object):
             self.cold_stage1_weight = cd_config.stage1_weight
             self.cold_stage2_weight = cd_config.stage2_weight
             self.cold_predict_target = cd_config.predict_target
+            # tanh normalization scale for the stage-2 residual guidance map r_t
+            self.cold_r_sigma = getattr(cd_config, 'r_sigma', 0.1)
 
             # Still initialize DDPM betas for ablation comparison
             betas = get_beta_schedule(
@@ -142,7 +144,7 @@ class Diffusion(object):
             )
             self.betas = torch.from_numpy(betas).float().to(self.device)
             logging.info(f"[Cold Diffusion] alpha_schedule='{alpha_schedule}', T={T_cold}, s={s_cold}, sigmoid_k={sigmoid_k}")
-            logging.info(f"[Cold Diffusion] Stage weights: lambda_1={self.cold_stage1_weight}, lambda_2={self.cold_stage2_weight}")
+            logging.info(f"[Cold Diffusion] Stage weights: lambda_1={self.cold_stage1_weight}, lambda_2={self.cold_stage2_weight}, r_sigma={self.cold_r_sigma}")
         else:
             # ---- Original DDPM: Initialize beta schedule ----
             betas = get_beta_schedule(
@@ -359,6 +361,7 @@ class Diffusion(object):
                     model, x_img, x_gt, t, self.alpha_bar,
                     stage1_weight=self.cold_stage1_weight,
                     stage2_weight=self.cold_stage2_weight,
+                    r_sigma=self.cold_r_sigma,
                 )
 
                 tb_logger.add_scalar("loss", loss, global_step=step)
@@ -1093,7 +1096,8 @@ class Diffusion(object):
 
             denoised, xs, x0_preds, x0_preds_stage2 = \
                 cold_diffusion_improved_sampling(
-                    x_img, self.alpha_bar, model, self.num_timesteps
+                    x_img, self.alpha_bar, model, self.num_timesteps,
+                    r_sigma=self.cold_r_sigma
                 )
             # Always return the final denoised result (equiv to last=True for DDPM)
             return denoised
