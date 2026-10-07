@@ -1,4 +1,9 @@
 LoDoPaB_10/
+LoDoPaB_10_stage2/
+LoDoPaB_10_stage2_consine/
+
 others/
 visualizations/
-LoDoPaB_10_linear/
+*.pth
+logs/
+tensorboard/

@@ -40,7 +40,7 @@ cold_diffusion:
     # 'cmpd' is an alias of 'cosine' (Nichol-Dhariwal). Must match between
     # training and sampling: the schedule is rebuilt from config in __init__,
     # it is NOT stored in the checkpoint.
-    alpha_schedule: linear
+    alpha_schedule: cosine
     cmpd_s: 0.008            # cosine offset, used only by cosine/cmpd
     sigmoid_k: 10.0          # sigmoid steepness, used only by sigmoid
     num_timesteps: 10
@@ -59,7 +59,7 @@ training:
 
 sampling:
     batch_size: 4
-    ckpt_id: [300000, 400000, 500000]
+    ckpt_id: [500000,800000]
     last_only: True
 
 sampling_inter:
