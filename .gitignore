@@ -1,0 +1,25 @@
+# 实验输出目录(ckpt / tensorboard / 测试结果,体积大)
+LoDoPaB_A/
+LoDoPaB_AC/
+LoDoPaB_base/
+LoDoPaB_BC/
+LoDoPaB_C/
+LoDoPaB_10/
+others/
+visualizations/
+
+# 训练产物
+logs/
+tensorboard/
+image_samples/
+*.pth
+*.pkl
+
+# Python
+__pycache__/
+*.pyc
+
+# 本地个人配置
+.claude/settings.local.json
+
+docs/

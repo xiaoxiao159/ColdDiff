@@ -1,0 +1,95 @@
+data:
+    dataset: "LDFDCT"
+    train_dataroot: "/home/zd/LoDoPaB_train"
+    val_dataroot: "/home/zd/LoDoPaB_test"
+    sample_dataroot: "/home/zd/LoDoPaB_test"
+    image_size: 352
+    channels: 1
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: true
+    rescaled: true
+    num_workers: 8
+
+model:
+    type: "cold_diffusion"
+    # 3 channels = [LDCT, x_t, r_t] with use_residual_map: true
+    # (set 2 here AND use_residual_map: false for the plain 2ch ablation)
+    in_channels: 3
+    out_ch: 1
+    ch: 32
+    # 5 levels: 32/64/96/128/160, 352 -> 176 -> 88 -> 44 -> 22
+    ch_mult: [1, 2, 3, 4, 5]
+    num_res_blocks: 2
+    attn_resolutions: [22,]
+    dropout: 0.0
+    var_type: fixedsmall
+    ema_rate: 0.999
+    ema: True
+    resamp_with_conv: True
+    # encoder levels with wavelet-gated skips; [] disables TWG.
+    # levels 0/1/2 = 352/176/88
+    twg_levels: [0, 1, 2]
+
+diffusion:
+    beta_schedule: linear
+    beta_start: 0.0001
+    beta_end: 0.02
+    # For Cold Diffusion: this controls the UNet timestep embedding range.
+    # Must match cold_diffusion.num_timesteps so the sinusoidal embedding
+    # operates on the same scale as the actual t values [1, T].
+    num_diffusion_timesteps: 10
+
+cold_diffusion:
+    # Degradation curve. One of: linear | cosine | cmpd | sigmoid | quad.
+    # 'cmpd' is an alias of 'cosine' (Nichol-Dhariwal). Must match between
+    # training and sampling: the schedule is rebuilt from config in __init__,
+    # it is NOT stored in the checkpoint.
+    alpha_schedule: linear
+    cmpd_s: 0.008            # cosine offset, used only by cosine/cmpd
+    sigmoid_k: 10.0          # sigmoid steepness, used only by sigmoid
+    num_timesteps: 10
+    stage1_weight: 0.4
+    stage2_weight: 0.6
+    predict_target: "x0"
+    # ---- Stage-2 residual guidance switches (ablation) ----
+    # use_residual_map: stage 2 gets r_t = tanh(stage-1 error / r_sigma) as a
+    #   3rd input channel (stage 1 zero-fills it). false -> plain 2ch input;
+    #   then set model.in_channels: 2 to match.
+    # detach_stage1: true = cut stage-2 -> stage-1 gradients (baseline-style
+    #   independent stages); false = joint two-level optimization (cold repo
+    #   behavior). Forward values identical either way, gradients differ.
+    # r_sigma: tanh normalization scale for r_t.
+    use_residual_map: true
+    detach_stage1: false
+    #true，stage1/stage2分离；false，联合优化
+    r_sigma: 0.1
+
+training:
+    batch_size: 2
+    n_epochs: 10000
+    n_iters: 5000000
+    snapshot_freq: 5000
+    validation_freq: 10000
+
+sampling:
+    batch_size: 4
+    ckpt_id: [600000]
+    last_only: True
+
+sampling_inter:
+    batch_size: 32
+    last_only: True
+
+sampling_fid:
+    batch_size: 8
+    last_only: True
+
+optim:
+    weight_decay: 0.000
+    optimizer: "Adam"
+    lr: 0.0001
+    beta1: 0.9
+    amsgrad: false
+    eps: 0.00000001
